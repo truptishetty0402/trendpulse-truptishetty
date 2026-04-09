@@ -21,7 +21,7 @@ TOP_STORIES_URL = "https://hacker-news.firebaseio.com/v0/topstories.json"
 ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/{}.json"
 
 # Required header
-headers = {"Trupti": "TrendPulse/1.0"}
+headers = {"User-Agent": "TrendPulse/1.0"}
 
 # Keywords used to categorize stories
 categories = {
