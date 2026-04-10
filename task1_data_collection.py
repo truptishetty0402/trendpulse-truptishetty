@@ -1,121 +1,93 @@
-"""
-TrendPulse - Task 1 (Final Simplified Version)
-
-Fetch trending stories from HackerNews API,
-categorize them, and save 100+ stories.
-
-Author: Trupti Shetty
-"""
+# Task 1: Fetch Data from HackerNews API
+# Author: Tupti Ashish Shetty
 
 import requests
 import json
-import os
 import time
+import os
 from datetime import datetime
 
-# API URLs
+# Base URLs
 TOP_STORIES_URL = "https://hacker-news.firebaseio.com/v0/topstories.json"
 ITEM_URL = "https://hacker-news.firebaseio.com/v0/item/{}.json"
 
-# Header
-headers = {"User-Agent": "TrendPulse/1.0"}
+headers = {"Trupti": "TrendPulse/1.0"}
 
-# Categories with keywords
+# Categories and keywords
 categories = {
-    "technology": ["ai","software","tech","code","computer","data","cloud","api","gpu","llm"],
-    "worldnews": ["war","government","country","president","election","climate","attack","global"],
-    "sports": ["nfl","nba","fifa","sport","team","player","league","match"],
-    "science": ["research","study","space","physics","biology","discovery","nasa"],
-    "entertainment": ["movie","film","music","netflix","book","show","award","tv"]
+    "technology": ["ai", "software", "tech", "code", "computer", "data", "cloud", "api", "gpu", "llm"],
+    "worldnews": ["war", "government", "country", "president", "election", "climate", "attack", "global"],
+    "sports": ["nfl", "nba", "fifa", "sport", "game", "team", "player", "league", "championship"],
+    "science": ["research", "study", "space", "physics", "biology", "discovery", "nasa", "genome"],
+    "entertainment": ["movie", "film", "music", "netflix", "game", "book", "show", "award", "streaming"]
 }
 
+# Store collected stories
+collected_stories = []
 
 def get_category(title):
     """Assign category based on keywords"""
     title_lower = title.lower()
-
     for category, keywords in categories.items():
         for keyword in keywords:
             if keyword in title_lower:
                 return category
+    return None
 
-    return "technology"   # 🔥 fallback ensures no story is lost
 
+try:
+    response = requests.get(TOP_STORIES_URL, headers=headers)
+    story_ids = response.json()[:500]
+except Exception as e:
+    print("Error fetching top stories:", e)
+    story_ids = []
 
-def fetch_json(url):
-    """Safe API request"""
+# Collect up to 25 per category
+category_counts = {cat: 0 for cat in categories}
+
+for story_id in story_ids:
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        return response.json()
+        res = requests.get(ITEM_URL.format(story_id), headers=headers)
+        story = res.json()
     except:
-        print(f"Request failed: {url}")
-        return None
+        print(f"Failed to fetch story {story_id}")
+        continue
 
+    if not story or "title" not in story:
+        continue
 
-def main():
+    category = get_category(story["title"])
+    if not category:
+        continue
 
-    print("Fetching top stories...")
+    if category_counts[category] >= 25:
+        continue
 
-    story_ids = fetch_json(TOP_STORIES_URL)
+    data = {
+        "post_id": story.get("id"),
+        "title": story.get("title"),
+        "category": category,
+        "score": story.get("score", 0),
+        "num_comments": story.get("descendants", 0),
+        "author": story.get("by"),
+        "collected_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
 
-    if not story_ids:
-        print("Failed to fetch story IDs")
-        return
+    collected_stories.append(data)
+    category_counts[category] += 1
 
-    # 🔥 Increased range ensures enough data
-    story_ids = story_ids[:1500]
+    # Stop if all categories filled
+    if all(count >= 25 for count in category_counts.values()):
+        break
 
-    collected = []
+# Create data folder
+if not os.path.exists("data"):
+    os.makedirs("data")
 
-    for i, story_id in enumerate(story_ids):
+# Save file
+filename = f"data/trends_{datetime.now().strftime('%Y%m%d')}.json"
 
-        # Stop once we have enough stories
-        if len(collected) >= 120:
-            break
+with open(filename, "w") as f:
+    json.dump(collected_stories, f, indent=4)
 
-        story = fetch_json(ITEM_URL.format(story_id))
-
-        if not story:
-            continue
-
-        title = story.get("title", "")
-
-        if not title:
-            continue
-
-        category = get_category(title)
-
-        record = {
-            "post_id": story.get("id"),
-            "title": title,
-            "category": category,
-            "score": story.get("score", 0),
-            "num_comments": story.get("descendants", 0),
-            "author": story.get("by"),
-            "collected_at": datetime.now().isoformat()
-        }
-
-        collected.append(record)
-
-        # Sleep every 50 requests (rate safety)
-        if i % 50 == 0:
-            time.sleep(2)
-
-    # Create data folder
-    os.makedirs("data", exist_ok=True)
-
-    # File name
-    today = datetime.now().strftime("%Y%m%d")
-    filename = f"data/trends_{today}.json"
-
-    # Save file
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(collected, f, indent=2)
-
-    # Final output
-    print(f"Collected {len(collected)} stories. Saved to {filename}")
-
-
-if __name__ == "__main__":
-    main()
+print(f"Collected {len(collected_stories)} stories. Saved to {filename}")

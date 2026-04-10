@@ -1,81 +1,40 @@
-"""
-TrendPulse - Task 2
-Load the JSON file created in Task 1, clean the data,
-and save it as a CSV file.
-
-Steps:
-1. Load JSON data
-2. Convert it into a pandas DataFrame
-3. Clean the data (remove duplicates, handle missing values)
-4. Save the cleaned dataset as CSV
-"""
+# Task 2: Clean JSON data and save as CSV
 
 import pandas as pd
-import json
 import os
-from datetime import datetime
 
-# Folder where JSON file from Task 1 is stored
-DATA_FOLDER = "data"
+# Load latest JSON file
+file_path = "/content/data/trends_20260410.json"  # update date if needed
 
-def find_latest_json():
-    """
-    Find the latest trends JSON file inside the data folder.
-    """
-    files = [f for f in os.listdir(DATA_FOLDER) if f.startswith("trends_") and f.endswith(".json")]
+df = pd.read_json(file_path)
 
-    if not files:
-        print("No JSON file found in data folder.")
-        return None
+print(f"Loaded {len(df)} stories")
 
-    # Sort files and pick the latest
-    files.sort()
-    return os.path.join(DATA_FOLDER, files[-1])
+# Remove duplicates
+df = df.drop_duplicates(subset="post_id")
+print(f"After removing duplicates: {len(df)}")
 
+# Remove nulls
+df = df.dropna(subset=["post_id", "title", "score"])
+print(f"After removing nulls: {len(df)}")
 
-def main():
+# Fix data types
+df["score"] = df["score"].astype(int)
+df["num_comments"] = df["num_comments"].fillna(0).astype(int)
 
-    # Step 1: Locate JSON file from Task 1
-    json_file = find_latest_json()
+# Remove low scores
+df = df[df["score"] >= 5]
+print(f"After removing low scores: {len(df)}")
 
-    if not json_file:
-        return
+# Clean title whitespace
+df["title"] = df["title"].str.strip()
 
-    print(f"Loading data from {json_file}")
+# Save CSV
+output_path = "data/trends_clean.csv"
+df.to_csv(output_path, index=False)
 
-    # Step 2: Load JSON data
-    with open(json_file, "r", encoding="utf-8") as f:
-        data = json.load(f)
+print(f"\nSaved {len(df)} rows to {output_path}")
 
-    # Step 3: Convert to pandas DataFrame
-    df = pd.DataFrame(data)
-
-    print("Original records:", len(df))
-
-    # Step 4: Data Cleaning
-
-    # Remove duplicate posts
-    df = df.drop_duplicates(subset="post_id")
-
-    # Remove rows with missing titles
-    df = df.dropna(subset=["title"])
-
-    # Convert collected_at to datetime
-    df["collected_at"] = pd.to_datetime(df["collected_at"])
-
-    # Reset index after cleaning
-    df = df.reset_index(drop=True)
-
-    print("Cleaned records:", len(df))
-
-    # Step 5: Save cleaned dataset to CSV
-    today = datetime.now().strftime("%Y%m%d")
-    csv_file = f"{DATA_FOLDER}/trends_cleaned_{today}.csv"
-
-    df.to_csv(csv_file, index=False)
-
-    print(f"Cleaned data saved to {csv_file}")
-
-
-if __name__ == "__main__":
-    main()
+# Summary
+print("\nStories per category:")
+print(df["category"].value_counts())

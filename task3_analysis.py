@@ -1,81 +1,47 @@
-"""
-TrendPulse - Task 3
-Analyze the cleaned CSV dataset using Pandas and NumPy.
-
-Steps:
-1. Load the cleaned CSV file
-2. Perform statistical analysis
-3. Identify trending categories
-4. Calculate average scores and comments
-"""
+# Task 3: Analysis with Pandas & NumPy
 
 import pandas as pd
 import numpy as np
-import os
 
-DATA_FOLDER = "data"
+# Load data
+df = pd.read_csv("data/trends_clean.csv")
 
+print("Loaded data:", df.shape)
 
-def find_latest_csv():
-    """
-    Find the latest cleaned CSV file created in Task 2.
-    """
-    files = [f for f in os.listdir(DATA_FOLDER) if f.startswith("trends_cleaned_") and f.endswith(".csv")]
+# First 5 rows
+print("\nFirst 5 rows:")
+print(df.head())
 
-    if not files:
-        print("No cleaned CSV file found.")
-        return None
+# Averages
+print("\nAverage score:", df["score"].mean())
+print("Average comments:", df["num_comments"].mean())
 
-    files.sort()
-    return os.path.join(DATA_FOLDER, files[-1])
+# NumPy analysis
+scores = df["score"].values
 
+print("\n--- NumPy Stats ---")
+print("Mean:", np.mean(scores))
+print("Median:", np.median(scores))
+print("Std Dev:", np.std(scores))
+print("Max:", np.max(scores))
+print("Min:", np.min(scores))
 
-def main():
+# Most stories category
+print("\nMost stories in:")
+print(df["category"].value_counts().idxmax())
 
-    # Step 1: Locate latest CSV file
-    csv_file = find_latest_csv()
+# Most commented story
+top_comment = df.loc[df["num_comments"].idxmax()]
+print("\nMost commented story:")
+print(top_comment["title"], "-", top_comment["num_comments"])
 
-    if not csv_file:
-        return
+# Add columns
+df["engagement"] = df["num_comments"] / (df["score"] + 1)
 
-    print(f"Loading cleaned data from {csv_file}")
+avg_score = df["score"].mean()
+df["is_popular"] = df["score"] > avg_score
 
-    # Step 2: Load data
-    df = pd.read_csv(csv_file)
+# Save
+df.to_csv("data/trends_analysed.csv", index=False)
 
-    print("\nTotal Stories:", len(df))
-
-    # Step 3: Category distribution
-    print("\nStories per Category:")
-    category_counts = df["category"].value_counts()
-    print(category_counts)
-
-    # Step 4: Average score per category
-    print("\nAverage Score per Category:")
-    avg_scores = df.groupby("category")["score"].mean()
-    print(avg_scores)
-
-    # Step 5: Average comments per category
-    print("\nAverage Comments per Category:")
-    avg_comments = df.groupby("category")["num_comments"].mean()
-    print(avg_comments)
-
-    # Step 6: Find most popular story
-    top_story = df.loc[df["score"].idxmax()]
-
-    print("\nTop Trending Story:")
-    print("Title:", top_story["title"])
-    print("Category:", top_story["category"])
-    print("Score:", top_story["score"])
-    print("Author:", top_story["author"])
-
-    # Step 7: Use NumPy for additional stats
-    print("\nNumPy Statistics:")
-    print("Max Score:", np.max(df["score"]))
-    print("Min Score:", np.min(df["score"]))
-    print("Mean Score:", np.mean(df["score"]))
-    print("Median Score:", np.median(df["score"]))
-
-
-if __name__ == "__main__":
-    main()
+print("\nSaved to data/trends_analysed.csv")
